@@ -9,7 +9,7 @@ pipeline {
     // Github에 있는 소스 코드 가져오기
     stage(Git Clone) {
       steps {
-        git url 'https://github.com/Undery33/spring-petclinic-502.git/', branch: 'main'
+        git url 'https://github.com/Undery33/spring-petclinic-502.git', branch: 'main'
       }
     }
   }
