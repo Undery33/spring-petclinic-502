@@ -13,5 +13,13 @@ pipeline {
         branch: 'main'
       }
     }
+
+    // Maven을 이용한 build
+    stage('MAven Build'){
+      steps {
+        sh 'mvn -Dmaven.test.failure.ignore=true clean package'
+      }
+    }
+    
   }
 }
