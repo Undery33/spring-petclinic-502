@@ -5,6 +5,11 @@ pipeline {
     jdk "JDK21"
   }
   
+  // 환경 변수 지정
+  environment {
+    DOCKERHUB_CRED = credentials('dockerCredentials')
+  }
+  
   stages {
     // Github에 있는 소스 코드 가져오기
     stage('Git Clone') {
@@ -22,18 +27,35 @@ pipeline {
     }
 
     // Docker Images 생성
-
+    stage('Docker Image Create'){
+      steps {
+        sh '''
+          docker build -t spring-petclinic:${BUILD_NUMBER} .
+          docker tag spring-petclinic:${BUILD_NUMBER} undery/spring-petclinic:latest
+        '''
+      }
+    }
+    
     // Docker Image Push
+    stage('Docker Image Push'){
+      steps {
+        sh '''
+          echo ${DOCKERHUB_CRED_PSW} | docker login -u ${DOCKERHUB_CRED_USR} --password-stdin
+          docker push undery/spring-petclinic:latest
+        '''
+      }
+    }
 
     // SSH를 이용한 파일 전송 및 실행
     stage('SSH Publish'){
       steps {
         sshPublisher(publishers: [sshPublisherDesc(configName: 'target', 
         transfers: [sshTransfer(cleanRemote: false, excludes: '', 
-        execCommand: '''fuser -k 8080/tcp
-        export BUILD_ID=PetClinic
-        
-        nohup java -jar /home/ubuntu/spring-petclinic-4.0.0-SNAPSHOT.jar >> nohup.out 2>&1 &''', 
+        execCommand: '''
+        docker rm -f $(docker ps -aq)
+        docker rmi -f $(docker images -q)
+        docker run -itd -p 80:8080 --name=spring-petclinic undery/spring-petclinic:latest
+        ''', 
         execTimeout: 120000, 
         flatten: false, 
         makeEmptyDirs: false, 
@@ -49,6 +71,14 @@ pipeline {
       }
     }
 
-    
+    // Docker Image 삭제
+    stage('Docker Image Remove'){
+      steps {
+        sh '''
+          docker rmi -f spring-petclinic:${BUILD_NUMBER}
+          docker rmi -f undery/spring-petclinic:latest
+        '''
+      }
+    }    
   }
 }
